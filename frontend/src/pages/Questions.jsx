@@ -7,6 +7,7 @@ import { apiFetch } from '../api/client';
 const Questions = () => {
   const { level } = useParams();
   const [questions, setQuestions] = useState([]);
+  const [allQuestions, setAllQuestions] = useState([]); // Store all questions for count calculation
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,6 +39,11 @@ const Questions = () => {
       setLoading(true);
       setError(null);
 
+      // First fetch all questions for this level (for count calculation)
+      const allData = await apiFetch(`/questions/level/${level}`);
+      setAllQuestions(Array.isArray(allData) ? allData : []);
+
+      // Then fetch filtered questions
       const params = new URLSearchParams();
       if (searchTerm.trim()) params.append('search', searchTerm.trim());
       if (selectedLanguage) params.append('language', selectedLanguage);
@@ -49,6 +55,7 @@ const Questions = () => {
       console.error('Error fetching questions:', err);
       setError(err.message || 'Failed to load questions');
       setQuestions([]);
+      setAllQuestions([]);
     } finally {
       setLoading(false);
     }
@@ -101,6 +108,24 @@ const Questions = () => {
     }, 0);
   };
 
+  // Calculate language counts for current level
+  const getLanguageCounts = () => {
+    const counts = {};
+    
+    // Get all questions for this level (unfiltered)
+    allQuestions.forEach(question => {
+      if (question.languages && Array.isArray(question.languages)) {
+        question.languages.forEach(lang => {
+          counts[lang] = (counts[lang] || 0) + 1;
+        });
+      }
+    });
+    
+    return counts;
+  };
+
+  const languageCounts = getLanguageCounts();
+
   const getLevelTitle = (level) => {
     const levels = {
       1: 'Basic Programming',
@@ -151,6 +176,33 @@ const Questions = () => {
         <p>{getLevelDescription(level)}</p>
         <div className="questions-count">
           {questions.length} {questions.length === 1 ? 'Question' : 'Questions'} Available
+        </div>
+      </div>
+
+      {/* Language Filter Buttons */}
+      <div className="language-buttons-container">
+        <h3>Filter by Programming Language:</h3>
+        <div className="language-buttons">
+          <button
+            className={`language-btn ${selectedLanguage === '' ? 'active' : ''}`}
+            onClick={() => setSelectedLanguage('')}
+          >
+            All Languages
+            <span className="lang-count">{allQuestions.length}</span>
+          </button>
+          {Object.entries(languageCounts)
+            .sort(([,a], [,b]) => b - a) // Sort by count descending
+            .map(([language, count]) => (
+              <button
+                key={language}
+                className={`language-btn ${selectedLanguage === language ? 'active' : ''}`}
+                onClick={() => setSelectedLanguage(language)}
+              >
+                {language.charAt(0).toUpperCase() + language.slice(1)}
+                <span className="lang-count">{count}</span>
+              </button>
+            ))
+          }
         </div>
       </div>
 

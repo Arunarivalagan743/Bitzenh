@@ -4,6 +4,7 @@ import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Questions from './pages/Questions'
 import AddQuestion from './pages/AddQuestion'
+import SearchResults from './pages/SearchResults'
 import './App.css'
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/level/:level" element={<Questions />} />
             <Route path="/add-question" element={<AddQuestion />} />
+            <Route path="/search" element={<SearchResults />} />
           </Routes>
         </main>
       </div>

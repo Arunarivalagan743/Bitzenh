@@ -5,7 +5,7 @@ const Question = require('../models/Question');
 // GET /api/questions - Get all questions with search and filter
 router.get('/', async (req, res) => {
   try {
-    const { search, language, level } = req.query;
+    const { search, language, level, tag } = req.query;
     let query = {};
     
     // Add level filter
@@ -16,6 +16,11 @@ router.get('/', async (req, res) => {
     // Add language filter
     if (language) {
       query.languages = { $in: [language] };
+    }
+    
+    // Add tag filter
+    if (tag) {
+      query.tags = { $in: [tag] };
     }
     
     // Add search functionality - comprehensive text search
@@ -42,6 +47,16 @@ router.get('/languages', async (req, res) => {
   try {
     const languages = await Question.distinct('languages');
     res.json(languages);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET /tags - Get all available tags (MUST be before /:id route)
+router.get('/tags', async (req, res) => {
+  try {
+    const tags = await Question.distinct('tags');
+    res.json(tags);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -263,6 +278,85 @@ router.delete('/:id/answers/:language', async (req, res) => {
     if (question.answers.length === 0) return res.status(400).json({ message: 'Cannot remove last remaining answer' });
     const saved = await question.save();
     res.json(saved);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// PUT /api/questions/:id/answers/language - Update answer language
+router.put('/:id/answers/language', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { oldLanguage, newLanguage } = req.body;
+
+    if (!oldLanguage || !newLanguage) {
+      return res.status(400).json({ message: 'Both oldLanguage and newLanguage are required' });
+    }
+
+    if (oldLanguage === newLanguage) {
+      return res.status(400).json({ message: 'Old and new language cannot be the same' });
+    }
+
+    const question = await Question.findById(id);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    // Find the answer with the old language
+    const answerIndex = question.answers.findIndex(answer => answer.language === oldLanguage.toLowerCase());
+    if (answerIndex === -1) {
+      return res.status(404).json({ message: 'Answer with old language not found' });
+    }
+
+    // Check if new language already exists
+    const existingNewLanguage = question.answers.find(answer => answer.language === newLanguage.toLowerCase());
+    if (existingNewLanguage) {
+      return res.status(400).json({ message: 'An answer with the new language already exists' });
+    }
+
+    // Update the language
+    question.answers[answerIndex].language = newLanguage.toLowerCase();
+
+    // Update the languages array
+    const oldLangIndex = question.languages.indexOf(oldLanguage.toLowerCase());
+    if (oldLangIndex !== -1) {
+      question.languages[oldLangIndex] = newLanguage.toLowerCase();
+    }
+
+    const savedQuestion = await question.save();
+    res.json(savedQuestion);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// PUT /api/questions/:id/answers/:language/content - Update answer content (code and explanation)
+router.put('/:id/answers/:language/content', async (req, res) => {
+  try {
+    const { id, language } = req.params;
+    const { code, explanation } = req.body;
+
+    if (!code || !explanation) {
+      return res.status(400).json({ message: 'Code and explanation are required' });
+    }
+
+    const question = await Question.findById(id);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    // Find the answer with the specified language
+    const answerIndex = question.answers.findIndex(answer => answer.language === language.toLowerCase());
+    if (answerIndex === -1) {
+      return res.status(404).json({ message: 'Answer with specified language not found' });
+    }
+
+    // Update the answer content
+    question.answers[answerIndex].code = code;
+    question.answers[answerIndex].explanation = explanation;
+
+    const savedQuestion = await question.save();
+    res.json(savedQuestion);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
