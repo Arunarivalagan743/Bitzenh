@@ -133,6 +133,79 @@
   border: 1px solid #000000;
 }
 
+/* Multiple Images Styles */
+.question-images {
+  margin-bottom: 1.5rem;
+  margin-top: 1rem;
+}
+
+.images-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.question-image-item {
+  border: 1px solid #000000;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #fff;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.question-image-item:hover {
+  border-color: #dc2626;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+  transform: translateY(-2px);
+}
+
+.question-image-item img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+  border: none;
+  transition: transform 0.3s ease;
+}
+
+.clickable-image {
+  cursor: pointer;
+}
+
+.question-image-item:hover img {
+  transform: scale(1.05);
+}
+
+.image-zoom-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  color: white;
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.question-image-item:hover .image-zoom-hint {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .images-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .question-image-item img {
+    height: 150px;
+  }
+}
+
 .answer-section {
   border-top: 1px solid #000000;
   padding-top: 1.5rem;
@@ -292,5 +365,111 @@
   
   .view-answer-btn {
     font-size: 0.9rem;
+  }
+}
+
+/* Image Modal Styles */
+.image-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 2rem;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.image-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border: 2px solid #dc2626;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  z-index: 1001;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.modal-close-btn:hover {
+  background-color: #b91c1c;
+  transform: scale(1.1);
+}
+
+/* Modal Animation */
+.image-modal-backdrop {
+  animation: modalFadeIn 0.3s ease;
+}
+
+.modal-image {
+  animation: modalZoomIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalZoomIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Mobile responsiveness for modal */
+@media (max-width: 768px) {
+  .image-modal-backdrop {
+    padding: 1rem;
+  }
+  
+  .modal-close-btn {
+    top: -10px;
+    right: -10px;
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
   }
 }

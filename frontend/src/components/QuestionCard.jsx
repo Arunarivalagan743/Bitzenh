@@ -6,7 +6,7 @@ import './QuestionCard.css';
 
 const QuestionCard = ({ question, onUpdated, onDeleted }) => {
   const [showAnswer, setShowAnswer] = useState(false);
-  const [showImage, setShowImage] = useState(false);
+  const [showImages, setShowImages] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const [isEditingQuestion, setIsEditingQuestion] = useState(false);
   const [editForm, setEditForm] = useState({ title: question.title, statement: question.statement, level: question.level, tags: (question.tags||[]).join(', ') });
@@ -16,6 +16,20 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
   const [localQuestion, setLocalQuestion] = useState(question);
   const [message, setMessage] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [modalImage, setModalImage] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Helper function to get image URLs - handles both old and new formats
+  const getImageUrls = () => {
+    if (localQuestion.imageUrls && Array.isArray(localQuestion.imageUrls)) {
+      return localQuestion.imageUrls;
+    } else if (localQuestion.imageUrl) {
+      return [localQuestion.imageUrl];
+    }
+    return [];
+  };
+
+  const imageUrls = getImageUrls();
 
   // Set default language when component mounts
   useEffect(() => {
@@ -24,12 +38,50 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
     }
   }, [localQuestion]);
 
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isModalOpen) {
+        closeImageModal();
+      }
+    };
+
+    if (isModalOpen) {
+      document.addEventListener('keydown', handleEscKey);
+      document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen]);
+
   const toggleAnswer = () => {
     setShowAnswer(!showAnswer);
   };
 
-  const toggleImage = () => {
-    setShowImage(!showImage);
+  const toggleImages = () => {
+    setShowImages(!showImages);
+  };
+
+  const openImageModal = (imageUrl) => {
+    setModalImage(imageUrl);
+    setIsModalOpen(true);
+  };
+
+  const closeImageModal = () => {
+    setModalImage(null);
+    setIsModalOpen(false);
+  };
+
+  const handleModalClick = (e) => {
+    // Close modal if clicking on backdrop (not the image itself)
+    if (e.target.classList.contains('image-modal-backdrop')) {
+      closeImageModal();
+    }
   };
 
   const getCurrentAnswer = () => {
@@ -88,6 +140,8 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
         level: parseInt(editForm.level,10),
         title: editForm.title,
         statement: editForm.statement,
+        imageUrls: localQuestion.imageUrls || [],
+        imagePublicIds: localQuestion.imagePublicIds || [],
         tags: editForm.tags ? editForm.tags.split(',').map(t=>t.trim()).filter(Boolean) : localQuestion.tags,
         answers: localQuestion.answers
       };
@@ -148,13 +202,13 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
         <div className="title-section">
           <h3 className="question-title">{localQuestion.title}</h3>
           <div className="header-buttons">
-            {localQuestion.imageUrl && (
-              <button 
-                className={`small-btn image-btn ${showImage ? 'active' : ''}`}
-                onClick={toggleImage}
-                title={showImage ? 'Hide Image' : 'Show Image'}
+            {imageUrls && imageUrls.length > 0 && (
+              <button
+                className={`small-btn image-btn ${showImages ? 'active' : ''}`}
+                onClick={toggleImages}
+                title={showImages ? 'Hide Images' : 'Show Images'}
               >
-               QUESTION
+                IMAGES ({imageUrls.length})
               </button>
             )}
             <button 
@@ -231,9 +285,22 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
           </div>
         )}
 
-        {localQuestion.imageUrl && showImage && (
-          <div className="question-image">
-            <img src={localQuestion.imageUrl} alt="Question illustration" />
+        {localQuestion.imageUrls && localQuestion.imageUrls.length > 0 && showImages && (
+          <div className="question-images">
+            <div className="images-container">
+              {localQuestion.imageUrls.map((imageUrl, index) => (
+                <div key={index} className="question-image-item">
+                  <img 
+                    src={imageUrl} 
+                    alt={`Question illustration ${index + 1}`}
+                    onClick={() => openImageModal(imageUrl)}
+                    className="clickable-image"
+                    title="Click to view larger"
+                  />
+                  <div className="image-zoom-hint">🔍 Click to enlarge</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -326,6 +393,27 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
           </div>
         )}
       </div>
+
+      {/* Image Modal */}
+      {isModalOpen && modalImage && (
+        <div className="image-modal-backdrop" onClick={handleModalClick}>
+          <div className="image-modal-content">
+            <button 
+              className="modal-close-btn" 
+              onClick={closeImageModal}
+              title="Close (ESC)"
+            >
+              ✕
+            </button>
+            <img 
+              src={modalImage} 
+              alt="Enlarged view" 
+              className="modal-image"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

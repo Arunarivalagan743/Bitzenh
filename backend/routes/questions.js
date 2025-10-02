@@ -37,6 +37,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /languages - Get all available languages (MUST be before /:id route)
+router.get('/languages', async (req, res) => {
+  try {
+    const languages = await Question.distinct('languages');
+    res.json(languages);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // GET /api/questions/:id - Get single question by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -83,20 +93,11 @@ router.get('/level/:level', async (req, res) => {
   }
 });
 
-// GET /languages - Get all available languages
-router.get('/languages', async (req, res) => {
-  try {
-    const languages = await Question.distinct('languages');
-    res.json(languages);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
 // POST /api/questions - Add a new question
 router.post('/', async (req, res) => {
   try {
-    const { level, title, statement, imageUrl, imagePublicId, answers, tags } = req.body;
+    console.log('Received request body:', JSON.stringify(req.body, null, 2));
+    const { level, title, statement, imageUrl, imagePublicId, imageUrls, imagePublicIds, answers, tags } = req.body;
     
     // Validation
     if (!level || !title || !statement || !answers || answers.length === 0) {
@@ -109,15 +110,38 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Level must be between 1 and 4' });
     }
     
+    // Handle both old single image and new multiple images format
+    let finalImageUrls = [];
+    let finalImagePublicIds = [];
+    
+    if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
+      finalImageUrls = imageUrls;
+    } else if (imageUrl) {
+      finalImageUrls = [imageUrl];
+    }
+    
+    if (imagePublicIds && Array.isArray(imagePublicIds) && imagePublicIds.length > 0) {
+      finalImagePublicIds = imagePublicIds;
+    } else if (imagePublicId) {
+      finalImagePublicIds = [imagePublicId];
+    }
+    
     // Extract languages from answers
     const languages = answers.map(answer => answer.language);
+    
+    console.log('Final image arrays:', {
+      finalImageUrls,
+      finalImagePublicIds,
+      originalImageUrls: imageUrls,
+      originalImagePublicIds: imagePublicIds
+    });
     
     const question = new Question({
       level,
       title,
       statement,
-      imageUrl,
-      imagePublicId,
+      imageUrls: finalImageUrls,
+      imagePublicIds: finalImagePublicIds,
       answers,
       tags: tags || [],
       languages
@@ -146,7 +170,7 @@ router.delete('/:id', async (req, res) => {
 // PUT /api/questions/:id - Replace full question (except createdAt)
 router.put('/:id', async (req, res) => {
   try {
-    const { level, title, statement, imageUrl, imagePublicId, answers, tags } = req.body;
+    const { level, title, statement, imageUrls, imagePublicIds, answers, tags } = req.body;
     if (!answers || !Array.isArray(answers) || answers.length === 0) {
       return res.status(400).json({ message: 'At least one answer required' });
     }
@@ -156,8 +180,8 @@ router.put('/:id', async (req, res) => {
     question.level = level ?? question.level;
     question.title = title ?? question.title;
     question.statement = statement ?? question.statement;
-    if (imageUrl !== undefined) question.imageUrl = imageUrl; // allow null to clear
-    if (imagePublicId !== undefined) question.imagePublicId = imagePublicId;
+    if (imageUrls !== undefined) question.imageUrls = imageUrls; // allow empty array to clear
+    if (imagePublicIds !== undefined) question.imagePublicIds = imagePublicIds;
     question.answers = answers;
     if (tags) question.tags = tags;
 
@@ -171,7 +195,7 @@ router.put('/:id', async (req, res) => {
 // PATCH /api/questions/:id - Partial update (no answers modification here unless provided)
 router.patch('/:id', async (req, res) => {
   try {
-    const allowed = ['level','title','statement','imageUrl','imagePublicId','tags','answers'];
+    const allowed = ['level','title','statement','imageUrls','imagePublicIds','tags','answers'];
     const question = await Question.findById(req.params.id);
     if (!question) return res.status(404).json({ message: 'Question not found' });
     for (const key of Object.keys(req.body)) {

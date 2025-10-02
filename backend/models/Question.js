@@ -33,13 +33,13 @@ const questionSchema = new mongoose.Schema({
     type: String,
     required: false
   },
-  imageUrl: {
-    type: String,
-    default: null
+  imageUrls: {
+    type: [String],
+    default: []
   },
-  imagePublicId: {
-    type: String,
-    default: null // Store Cloudinary public ID for deletion
+  imagePublicIds: {
+    type: [String],
+    default: [] // Store Cloudinary public IDs for deletion
   },
   answers: [answerSchema],
   tags: [{
@@ -88,6 +88,17 @@ questionSchema.pre('save', function(next) {
       .map(t => (t || '').trim().toLowerCase())
       .filter(Boolean);
   }
+  
+  // Migration: Convert old single image fields to arrays if needed
+  if (this.imageUrl && !Array.isArray(this.imageUrls)) {
+    this.imageUrls = [this.imageUrl];
+    this.imageUrl = undefined;
+  }
+  if (this.imagePublicId && !Array.isArray(this.imagePublicIds)) {
+    this.imagePublicIds = [this.imagePublicId];
+    this.imagePublicId = undefined;
+  }
+  
   next();
 });
 

@@ -14,9 +14,9 @@ const AddQuestion = () => {
   const [answers, setAnswers] = useState([
     { language: 'javascript', code: '', explanation: '' }
   ]);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [uploadedImageData, setUploadedImageData] = useState(null); // Stored after upload (optional use)
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [uploadedImagesData, setUploadedImagesData] = useState([]); // Stored after upload
   const [isDragOver, setIsDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -51,35 +51,50 @@ const AddQuestion = () => {
     }
   };
 
-  const validateAndSetFile = (file) => {
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setMessage({ type: 'error', text: 'Please select a valid image file' });
-      return false;
+  const validateAndSetFiles = (files) => {
+    const validFiles = [];
+    const previews = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setMessage({ type: 'error', text: `${file.name} is not a valid image file` });
+        continue;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setMessage({ type: 'error', text: `${file.name} is too large. Maximum size is 5MB` });
+        continue;
+      }
+      
+      validFiles.push(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previews.push({ file: file, preview: e.target.result });
+        if (previews.length === validFiles.length) {
+          setImagePreviews(prev => [...prev, ...previews]);
+        }
+      };
+      reader.readAsDataURL(file);
     }
     
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage({ type: 'error', text: 'Image size should be less than 5MB' });
-      return false;
+    if (validFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+      setMessage({ type: '', text: '' });
     }
-
-    setSelectedFile(file);
     
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target.result);
-    };
-    reader.readAsDataURL(file);
-    setMessage({ type: '', text: '' });
-    return true;
+    return validFiles.length > 0;
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      validateAndSetFile(file);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      validateAndSetFiles(files);
     }
   };
 
@@ -97,29 +112,40 @@ const AddQuestion = () => {
     e.preventDefault();
     setIsDragOver(false);
     
-    const files = e.dataTransfer.files;
+    const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      validateAndSetFile(files[0]);
+      validateAndSetFiles(files);
     }
   };
 
-  const clearImage = () => {
-    setSelectedFile(null);
-    setImagePreview(null);
-    setUploadedImageData(null);
+  const removeImage = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
     setMessage({ type: '', text: '' });
   };
 
-  const uploadImageToServer = async (file) => {
-    try {
-      const result = await apiUpload('/upload', file, 'image');
-      if (!result.success) throw new Error(result.message || 'Upload failed');
-      const imageData = { url: result.imageUrl, publicId: result.publicId };
-      setUploadedImageData(imageData);
-      return imageData;
-    } catch (error) {
-      throw new Error(error.message || 'Failed to upload image');
+  const clearAllImages = () => {
+    setSelectedFiles([]);
+    setImagePreviews([]);
+    setUploadedImagesData([]);
+    setMessage({ type: '', text: '' });
+  };
+
+  const uploadImagesToServer = async (files) => {
+    const uploadedImages = [];
+    
+    for (const file of files) {
+      try {
+        const result = await apiUpload('/upload', file, 'image');
+        if (!result.success) throw new Error(result.message || 'Upload failed');
+        uploadedImages.push({ url: result.imageUrl, publicId: result.publicId });
+      } catch (error) {
+        throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+      }
     }
+    
+    setUploadedImagesData(uploadedImages);
+    return uploadedImages;
   };
 
   const handleSubmit = async (e) => {
@@ -145,17 +171,17 @@ const AddQuestion = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      let imageUrl = null;
-      let imagePublicId = null;
+      let imageUrls = [];
+      let imagePublicIds = [];
       
-      // If file is selected, upload it first
-      if (selectedFile) {
+      // If files are selected, upload them first
+      if (selectedFiles.length > 0) {
         try {
-          const imageData = await uploadImageToServer(selectedFile);
-          imageUrl = imageData.url;
-          imagePublicId = imageData.publicId;
+          const imagesData = await uploadImagesToServer(selectedFiles);
+          imageUrls = imagesData.map(img => img.url);
+          imagePublicIds = imagesData.map(img => img.publicId);
         } catch (uploadError) {
-          setMessage({ type: 'error', text: 'Failed to upload image. Please try again.' });
+          setMessage({ type: 'error', text: 'Failed to upload images. Please try again.' });
           setLoading(false);
           return;
         }
@@ -165,11 +191,17 @@ const AddQuestion = () => {
         level: parseInt(formData.level),
         title: formData.title,
         statement: formData.statement,
-        imageUrl: imageUrl,
-        imagePublicId: imagePublicId,
         answers: validAnswers,
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : []
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : []
       };
+      
+      // Only add image arrays if there are images
+      if (imageUrls.length > 0) {
+        questionData.imageUrls = imageUrls;
+        questionData.imagePublicIds = imagePublicIds;
+      }
+      
+      console.log('Sending question data:', questionData);
 
       const result = await apiFetch('/questions', {
         method: 'POST',
@@ -188,9 +220,9 @@ const AddQuestion = () => {
         tags: ''
       });
       setAnswers([{ language: 'javascript', code: '', explanation: '' }]);
-      setSelectedFile(null);
-      setImagePreview(null);
-      setUploadedImageData(null);
+      setSelectedFiles([]);
+      setImagePreviews([]);
+      setUploadedImagesData([]);
 
       // Redirect to the level page after 2 seconds
       setTimeout(() => {
@@ -271,7 +303,7 @@ const AddQuestion = () => {
 
           <div className="form-group">
             <label htmlFor="image">
-              Image <span className="optional">(optional)</span>
+              Images <span className="optional">(optional)</span>
             </label>
             
             <div 
@@ -284,6 +316,7 @@ const AddQuestion = () => {
                 type="file"
                 id="imageFile"
                 accept="image/*"
+                multiple
                 onChange={handleFileChange}
                 className="file-input-hidden"
                 style={{ display: 'none' }}
@@ -292,28 +325,48 @@ const AddQuestion = () => {
                 <div className="drag-drop-icon">📁</div>
                 <div className="drag-drop-text">
                   <strong>
-                    {selectedFile 
-                      ? `Selected: ${selectedFile.name}` 
-                      : 'Drag & Drop your image here'
+                    {selectedFiles.length > 0 
+                      ? `Selected: ${selectedFiles.length} image(s)` 
+                      : 'Drag & Drop your images here'
                     }
                   </strong>
-                  <p>or click to browse files</p>
-                  <small>Max 5MB • JPG, PNG, GIF supported</small>
+                  <p>or click to browse files (multiple selection supported)</p>
+                  <small>Max 5MB per image • JPG, PNG, GIF supported</small>
                 </div>
               </label>
             </div>
 
-            {imagePreview && (
-              <div className="image-preview">
-                <img src={imagePreview} alt="Preview" />
-                <button
-                  type="button"
-                  className="remove-image-btn"
-                  onClick={clearImage}
-                  title="Remove image"
-                >
-                  ✕
-                </button>
+            {imagePreviews.length > 0 && (
+              <div className="images-preview-container">
+                <div className="images-preview-header">
+                  <span>{imagePreviews.length} image(s) selected</span>
+                  <button
+                    type="button"
+                    className="clear-all-images-btn"
+                    onClick={clearAllImages}
+                    title="Remove all images"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                <div className="images-preview-grid">
+                  {imagePreviews.map((item, index) => (
+                    <div key={index} className="image-preview-item">
+                      <img src={item.preview} alt={`Preview ${index + 1}`} />
+                      <button
+                        type="button"
+                        className="remove-image-btn"
+                        onClick={() => removeImage(index)}
+                        title="Remove this image"
+                      >
+                        ✕
+                      </button>
+                      <div className="image-filename">
+                        {selectedFiles[index]?.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
