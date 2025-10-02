@@ -1,8 +1,20 @@
 // Centralized API client
-// Set VITE_API_BASE_URL in a .env file at project root (e.g., https://siporants.onrender.com/api)
-// Falls back to local dev server if not provided.
+// Set VITE_API_BASE_URL in a .env file at project root (e.g., https://siporants.onrender.com OR https://siporants.onrender.com/api)
+// If you omit the trailing /api it will be appended automatically. Falls back to local dev server if not provided.
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+function normalizeBase(raw) {
+  if (!raw) return 'http://localhost:5000/api';
+  let base = raw.trim();
+  // Remove trailing slash
+  base = base.replace(/\/$/, '');
+  // If it already ends with /api or contains /api? query, keep as is, else append /api
+  if (!/\/api($|[/?#])/.test(base)) {
+    base += '/api';
+  }
+  return base;
+}
+
+const BASE_URL = normalizeBase(import.meta.env.VITE_API_BASE_URL);
 
 export function buildUrl(path) {
   if (path.startsWith('http')) return path;
