@@ -126,14 +126,14 @@ const AddQuestion = () => {
     e.preventDefault();
     
     // Validation
-    if (!formData.level || !formData.title || !formData.statement) {
+    if (!formData.level || !formData.title) {
       setMessage({ type: 'error', text: 'Please fill in all required fields' });
       return;
     }
 
     // Validate answers
     const validAnswers = answers.filter(answer => 
-      answer.language && answer.code.trim() && answer.explanation.trim()
+      answer.language && answer.code.trim()
     );
     
     if (validAnswers.length === 0) {
@@ -257,7 +257,7 @@ const AddQuestion = () => {
 
           <div className="form-group">
             <label htmlFor="statement">
-              Question Statement <span className="required">*</span>
+              Question Explanation <span className="optional">(optional)</span>
             </label>
             <textarea
               id="statement"
@@ -266,7 +266,6 @@ const AddQuestion = () => {
               onChange={handleChange}
               placeholder="Describe the problem clearly and provide any necessary context..."
               rows={4}
-              required
             />
           </div>
 
@@ -395,14 +394,13 @@ const AddQuestion = () => {
 
                 <div className="form-group">
                   <label>
-                    Explanation <span className="required">*</span>
+                    Explanation <span className="optional">(optional)</span>
                   </label>
                   <textarea
                     value={answer.explanation}
                     onChange={(e) => handleAnswerChange(index, 'explanation', e.target.value)}
                     placeholder="Explain how this solution works..."
                     rows={4}
-                    required
                   />
                 </div>
               </div>

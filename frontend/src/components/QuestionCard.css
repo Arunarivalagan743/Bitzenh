@@ -53,6 +53,28 @@
   color: #000000;
 }
 
+/* Additional action buttons */
+.edit-btn { background-color:#2563eb; }
+.edit-btn:hover { background-color:#1d4ed8; }
+.delete-btn { background-color:#6b7280; }
+.delete-btn:hover { background-color:#4b5563; }
+.add-answer-btn { background-color:#059669; }
+.add-answer-btn:hover { background-color:#047857; }
+.save-btn { background-color:#16a34a; }
+.save-btn:hover { background-color:#15803d; }
+.cancel-btn { background-color:#9ca3af; }
+.cancel-btn:hover { background-color:#6b7280; }
+.inline-message { margin-bottom:1rem; padding:.5rem .75rem; font-size:.85rem; border:1px solid #000; }
+.inline-message.success { background:#dcfce7; border-color:#16a34a; }
+.inline-message.error { background:#fee2e2; border-color:#dc2626; }
+
+.edit-question-form, .add-answer-form { border:1px solid #000; padding:1rem; background:#f8f9fa; margin-bottom:1.5rem; }
+.edit-question-form label, .add-answer-form label { font-size:.75rem; font-weight:600; color:#000; display:block; margin-bottom:.25rem; }
+.edit-question-form input, .edit-question-form textarea, .edit-question-form select,
+.add-answer-form input, .add-answer-form textarea, .add-answer-form select { width:100%; padding:.5rem; border:1px solid #000; background:#fff; font-size:.8rem; }
+.form-row-inline { margin-bottom:.75rem; }
+.form-actions-inline { display:flex; gap:.5rem; }
+
 .image-btn.active {
   background-color: #ffffff;
   color: #dc2626;
@@ -159,6 +181,41 @@
 
 .code-section {
   margin-bottom: 2rem;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.copy-btn {
+  background-color: #dc2626;
+  color: #ffffff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.copy-btn:hover {
+  background-color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.copy-btn.copy-success {
+  background-color: #16a34a;
+}
+
+.copy-btn.copy-success:hover {
+  background-color: #15803d;
 }
 
 .code-section h4,

@@ -213,7 +213,12 @@ const Questions = () => {
         ) : (
           <div className="questions-grid">
             {questions.map((question) => (
-              <QuestionCard key={question._id} question={question} />
+              <QuestionCard
+                key={question._id}
+                question={question}
+                onUpdated={fetchQuestions}
+                onDeleted={fetchQuestions}
+              />
             ))}
           </div>
         )}

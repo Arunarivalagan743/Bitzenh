@@ -37,6 +37,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/questions/:id - Get single question by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const question = await Question.findById(req.params.id);
+    if (!question) return res.status(404).json({ message: 'Question not found' });
+    res.json(question);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // GET /api/questions/level/:level - Get questions by level
 router.get('/level/:level', async (req, res) => {
   try {
@@ -132,36 +143,50 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/questions/:id - Update a question
+// PUT /api/questions/:id - Replace full question (except createdAt)
 router.put('/:id', async (req, res) => {
   try {
-    const { level, title, statement, imageUrl, answers, tags } = req.body;
-    
-    // Extract languages from answers
-    const languages = answers ? answers.map(answer => answer.language) : undefined;
-    
-    const updateData = { level, title, statement, imageUrl, answers, tags };
-    if (languages) {
-      updateData.languages = languages;
+    const { level, title, statement, imageUrl, imagePublicId, answers, tags } = req.body;
+    if (!answers || !Array.isArray(answers) || answers.length === 0) {
+      return res.status(400).json({ message: 'At least one answer required' });
     }
-    
-    const question = await Question.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-    
-    if (!question) {
-      return res.status(404).json({ message: 'Question not found' });
-    }
-    
-    res.json(question);
+    const question = await Question.findById(req.params.id);
+    if (!question) return res.status(404).json({ message: 'Question not found' });
+
+    question.level = level ?? question.level;
+    question.title = title ?? question.title;
+    question.statement = statement ?? question.statement;
+    if (imageUrl !== undefined) question.imageUrl = imageUrl; // allow null to clear
+    if (imagePublicId !== undefined) question.imagePublicId = imagePublicId;
+    question.answers = answers;
+    if (tags) question.tags = tags;
+
+    const saved = await question.save();
+    res.json(saved);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
-// POST /api/questions/:id/answers - Add answer to existing question
+// PATCH /api/questions/:id - Partial update (no answers modification here unless provided)
+router.patch('/:id', async (req, res) => {
+  try {
+    const allowed = ['level','title','statement','imageUrl','imagePublicId','tags','answers'];
+    const question = await Question.findById(req.params.id);
+    if (!question) return res.status(404).json({ message: 'Question not found' });
+    for (const key of Object.keys(req.body)) {
+      if (allowed.includes(key) && req.body[key] !== undefined) {
+        question[key] = req.body[key];
+      }
+    }
+    const saved = await question.save();
+    res.json(saved);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// POST /api/questions/:id/answers - Add or update single language answer
 router.post('/:id/answers', async (req, res) => {
   try {
     const { language, code, explanation } = req.body;
@@ -195,6 +220,25 @@ router.post('/:id/answers', async (req, res) => {
     
     const savedQuestion = await question.save();
     res.status(201).json(savedQuestion);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// DELETE /api/questions/:id/answers/:language - remove specific language answer
+router.delete('/:id/answers/:language', async (req, res) => {
+  try {
+    const { id, language } = req.params;
+    const question = await Question.findById(id);
+    if (!question) return res.status(404).json({ message: 'Question not found' });
+    const originalLen = question.answers.length;
+    question.answers = question.answers.filter(a => a.language !== language.toLowerCase());
+    if (question.answers.length === originalLen) {
+      return res.status(404).json({ message: 'Answer language not found' });
+    }
+    if (question.answers.length === 0) return res.status(400).json({ message: 'Cannot remove last remaining answer' });
+    const saved = await question.save();
+    res.json(saved);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
