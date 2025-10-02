@@ -3,8 +3,16 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
-createRoot(document.getElementById('root')).render(
+const rootEl = document.getElementById('root');
+createRoot(rootEl).render(
   <StrictMode>
     <App />
-  </StrictMode>,
-)
+  </StrictMode>
+);
+
+// Signal loader to fade out after first paint
+requestAnimationFrame(() => {
+  if (typeof window !== 'undefined' && window.__APP_READY__) {
+    window.__APP_READY__();
+  }
+});

@@ -13,7 +13,7 @@ const Home = () => {
     <div className="home">
       <div className="hero-section">
         <div className="hero-content">
-          <h1>Sri Shakti Engineering Tech College</h1>
+          <h1>Sri Shakti EngTech College</h1>
           <h2>Programming Questions & Answers Portal</h2>
           <p>
             Explore programming questions with their answers and solutions. 

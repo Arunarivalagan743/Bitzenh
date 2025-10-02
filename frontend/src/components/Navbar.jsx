@@ -7,7 +7,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="nav-container">
         <Link to="/" className="nav-logo">
-          College Programming Portal
+         PortalSahooh
         </Link>
         <div className="nav-menu">
           <Link to="/" className="nav-link">
