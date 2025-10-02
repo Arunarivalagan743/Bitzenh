@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AddQuestion.css';
+import { apiFetch, apiUpload } from '../api/client';
 
 const AddQuestion = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const AddQuestion = () => {
   ]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [uploadedImageData, setUploadedImageData] = useState(null); // Store URL and publicId
+  const [uploadedImageData, setUploadedImageData] = useState(null); // Stored after upload (optional use)
   const [isDragOver, setIsDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -110,44 +111,14 @@ const AddQuestion = () => {
   };
 
   const uploadImageToServer = async (file) => {
-    console.log('Starting upload for file:', file);
-    const formData = new FormData();
-    formData.append('image', file);
-
     try {
-      console.log('Sending request to upload endpoint');
-      const response = await fetch('http://localhost:5000/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      console.log('Upload response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Upload failed with status:', response.status, 'Error:', errorText);
-        throw new Error('Failed to upload image');
-      }
-
-      const result = await response.json();
-      console.log('Upload result:', result);
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Upload failed');
-      }
-      
-      // Store both URL and public ID for later use
-      const imageData = {
-        url: result.imageUrl,
-        publicId: result.publicId
-      };
-      
-      console.log('Final image data:', imageData);
+      const result = await apiUpload('/upload', file, 'image');
+      if (!result.success) throw new Error(result.message || 'Upload failed');
+      const imageData = { url: result.imageUrl, publicId: result.publicId };
       setUploadedImageData(imageData);
       return imageData;
     } catch (error) {
-      console.error('Upload error:', error);
-      throw new Error('Failed to upload image');
+      throw new Error(error.message || 'Failed to upload image');
     }
   };
 
@@ -179,23 +150,16 @@ const AddQuestion = () => {
       
       // If file is selected, upload it first
       if (selectedFile) {
-        console.log('Uploading file:', selectedFile.name);
         try {
           const imageData = await uploadImageToServer(selectedFile);
-          console.log('Upload successful:', imageData);
           imageUrl = imageData.url;
           imagePublicId = imageData.publicId;
         } catch (uploadError) {
-          console.error('Upload failed:', uploadError);
           setMessage({ type: 'error', text: 'Failed to upload image. Please try again.' });
           setLoading(false);
           return;
         }
-      } else {
-        console.log('No file selected, proceeding without image');
       }
-
-      console.log('Final image data:', { imageUrl, imagePublicId });
 
       const questionData = {
         level: parseInt(formData.level),
@@ -207,21 +171,13 @@ const AddQuestion = () => {
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : []
       };
 
-      console.log('Sending question data:', questionData);
-
-      const response = await fetch('http://localhost:5000/api/questions', {
+      const result = await apiFetch('/questions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(questionData),
       });
-
-      if (!response.ok) {
+      if (!result || !result._id) {
         throw new Error('Failed to add question');
       }
-
-      const result = await response.json();
       setMessage({ type: 'success', text: 'Question added successfully!' });
       
       // Reset form

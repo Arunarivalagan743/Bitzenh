@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import QuestionCard from '../components/QuestionCard';
 import './Questions.css';
+import { apiFetch } from '../api/client';
 
 const Questions = () => {
   const { level } = useParams();
@@ -35,33 +36,19 @@ const Questions = () => {
   const fetchQuestions = async () => {
     try {
       setLoading(true);
-      setError(null); // Clear any previous errors
-      
-      let url = `http://localhost:5000/api/questions/level/${level}`;
+      setError(null);
+
       const params = new URLSearchParams();
-      
-      if (searchTerm.trim()) {
-        params.append('search', searchTerm.trim());
-      }
-      
-      if (selectedLanguage) {
-        params.append('language', selectedLanguage);
-      }
-      
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-      
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch questions: ${response.status} ${response.statusText}`);
-      }
-      const data = await response.json();
-      setQuestions(data || []);
+      if (searchTerm.trim()) params.append('search', searchTerm.trim());
+      if (selectedLanguage) params.append('language', selectedLanguage);
+      const query = params.toString() ? `?${params.toString()}` : '';
+
+      const data = await apiFetch(`/questions/level/${level}${query}`);
+      setQuestions(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching questions:', err);
-      setError(err.message);
-      setQuestions([]); // Set empty array on error
+      setError(err.message || 'Failed to load questions');
+      setQuestions([]);
     } finally {
       setLoading(false);
     }
@@ -69,11 +56,8 @@ const Questions = () => {
 
   const fetchLanguages = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/questions/languages');
-      if (response.ok) {
-        const languages = await response.json();
-        setAvailableLanguages(languages);
-      }
+      const languages = await apiFetch('/questions/languages');
+      if (Array.isArray(languages)) setAvailableLanguages(languages);
     } catch (err) {
       console.error('Failed to fetch languages:', err);
     }
