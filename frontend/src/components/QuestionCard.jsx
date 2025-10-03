@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { apiFetch } from '../api/client';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -86,8 +86,20 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
     };
   }, [isImageModalOpen, isAnswerModalOpen, isQuestionModalOpen]);
 
+  const incrementQuestionView = useCallback(async () => {
+    try {
+      const response = await apiFetch(`/questions/${localQuestion._id}/views`, { method: 'POST' });
+      if (response && typeof response.viewCount === 'number') {
+        setLocalQuestion(prev => ({ ...prev, viewCount: response.viewCount }));
+      }
+    } catch (error) {
+      console.error('Failed to increment question views', error);
+    }
+  }, [localQuestion._id]);
+
   const openImageModal = () => {
     console.log('Opening image modal with imageUrls:', imageUrls);
+    incrementQuestionView();
     setIsImageModalOpen(true);
   };
 
@@ -99,6 +111,7 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
   const openAnswerModal = (language = '') => {
     const langToUse = language || selectedLanguage || (localQuestion.answers && localQuestion.answers[0]?.language) || '';
     setAnswerModalLanguage(langToUse);
+    incrementQuestionView();
     setIsAnswerModalOpen(true);
   };
 
@@ -109,6 +122,7 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
 
   const openQuestionModal = () => {
     console.log('Opening question modal with localQuestion:', localQuestion);
+    incrementQuestionView();
     setIsQuestionModalOpen(true);
   };
 
@@ -203,6 +217,12 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
   const availableLanguages = [
     'javascript','python','java','cpp','c','csharp','php','ruby','go','rust','typescript','swift','kotlin'
   ];
+
+  const answerLanguages = useMemo(() => {
+    if (!localQuestion.answers || localQuestion.answers.length === 0) return [];
+    const uniqueLanguages = new Set(localQuestion.answers.map(answer => answer.language));
+    return Array.from(uniqueLanguages);
+  }, [localQuestion.answers]);
 
   const handleQuestionFieldChange = (e) => {
     const { name, value } = e.target;
@@ -452,7 +472,13 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
       <div className="question-header">
         <div className="title-row">
           <h3 className="question-title">{localQuestion.title}</h3>
-          <span className="question-level">Level {localQuestion.level}</span>
+          <div className="question-meta">
+            <span className="question-level">Level {localQuestion.level}</span>
+            <span className="question-views" title="Total views for this question">
+              <FaEye />
+              <span className="question-views-count">{(localQuestion.viewCount ?? 0).toLocaleString()}</span>
+            </span>
+          </div>
         </div>
         <div className="header-buttons">
           <button
@@ -465,7 +491,7 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
           {imageUrls && imageUrls.length > 0 && (
             <button
               className="small-btn image-btn"
-              onClick={() => openImageModal(imageUrls[0])}
+              onClick={openImageModal}
               title="View Images in Modal"
             >
               <FaImage /> <span className="btn-text">IMAGES ({imageUrls.length})</span>
@@ -508,6 +534,24 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
       <div className="question-content">
         {message && (
           <div className={`inline-message ${message.type}`}>{message.text}</div>
+        )}
+
+        {answerLanguages.length > 0 && (
+          <div className="language-badges">
+            {answerLanguages.map(language => (
+              <button
+                key={language}
+                type="button"
+                className={`language-badge ${selectedLanguage === language ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedLanguage(language);
+                  openAnswerModal(language);
+                }}
+              >
+                {language}
+              </button>
+            ))}
+          </div>
         )}
 
         {isEditingQuestion ? (

@@ -73,6 +73,24 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.post('/:id/views', async (req, res) => {
+  try {
+    const question = await Question.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { viewCount: 1 } },
+      { new: true }
+    );
+
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    res.json({ viewCount: question.viewCount, question });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // GET /api/questions/level/:level - Get questions by level
 router.get('/level/:level', async (req, res) => {
   try {

@@ -1,23 +1,73 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
 
-const Home = () => {
+const Home = ({ siteViewCount, onRefreshSiteViews }) => {
   const navigate = useNavigate();
+  const [displayViews, setDisplayViews] = useState(siteViewCount ?? null);
+  const [viewsLoading, setViewsLoading] = useState(false);
+  const [viewsError, setViewsError] = useState(null);
+
+  useEffect(() => {
+    setDisplayViews(siteViewCount ?? null);
+  }, [siteViewCount]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    if (!onRefreshSiteViews || siteViewCount != null) {
+      return () => {
+        ignore = true;
+      };
+    }
+
+    const fetchViews = async () => {
+      setViewsLoading(true);
+      setViewsError(null);
+      try {
+        const data = await onRefreshSiteViews();
+        if (!ignore && data && typeof data.totalViews === 'number') {
+          setDisplayViews(data.totalViews);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setViewsError('Unable to load visitor stats right now.');
+        }
+      } finally {
+        if (!ignore) {
+          setViewsLoading(false);
+        }
+      }
+    };
+
+    fetchViews();
+
+    return () => {
+      ignore = true;
+    };
+  }, [onRefreshSiteViews, siteViewCount]);
 
   const handleLevelClick = (level) => {
     navigate(`/level/${level}`);
   };
+
+  const viewsValue = displayViews != null
+    ? displayViews.toLocaleString()
+    : viewsLoading
+      ? 'Loading…'
+      : '—';
 
   return (
     <div className="home">
       <div className="hero-section">
         <div className="hero-content">
           <h1>Sri Shakti EngTech College</h1>
-          <h2>Programming Questions & Answers Portal</h2>
+          <h2>Programming Questions &amp; Answers Portal</h2>
+         
+         
           <p>
-            Explore programming questions with their answers and solutions. 
-            This portal provides instant access to answers for a wide range of programming problems 
+            Explore programming questions.
+            This portal provides instant access to answers for a wide range of programming problems
             organized by difficulty levels to help students learn effectively.
           </p>
           <div className="level-cards">
@@ -44,7 +94,7 @@ const Home = () => {
           </div>
         </div>
       </div>
-      
+
       <div className="features-section">
         <h2>What You'll Find Here</h2>
         <div className="features-grid">

@@ -1,45 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiSearch, FiFilter, FiX } from 'react-icons/fi';
+import { FiSearch, FiX } from 'react-icons/fi';
 import './Navbar.css';
 
 const Navbar = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [showQuickFilters, setShowQuickFilters] = useState(false);
-  const [selectedLevel, setSelectedLevel] = useState('');
   const searchInputRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    performSearch();
-  };
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
-  const performSearch = () => {
-    if (!searchTerm.trim() && !selectedLevel) return;
-    
-    const params = new URLSearchParams();
-    if (searchTerm.trim()) params.append('q', searchTerm.trim());
-    if (selectedLevel) params.append('level', selectedLevel);
-    
-    const query = params.toString() ? `?${params.toString()}` : '';
-    console.log('Navbar search navigating to:', `/search${query}`);
+  const performSearch = (term = searchTerm) => {
+    const trimmed = term.trim();
+    const query = trimmed ? `?q=${encodeURIComponent(trimmed)}` : '';
     navigate(`/search${query}`);
   };
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    
-    // Auto-search as user types with debouncing
-    clearTimeout(window.searchTimeout);
-    window.searchTimeout = setTimeout(() => {
-      const params = new URLSearchParams();
-      if (value.trim()) params.append('q', value.trim());
-      if (selectedLevel) params.append('level', selectedLevel);
-      
-      const query = params.toString() ? `?${params.toString()}` : '';
-      navigate(`/search${query}`);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(value);
     }, 300);
   };
 
@@ -52,28 +45,15 @@ const Navbar = () => {
 
   const clearSearch = () => {
     setSearchTerm('');
-    setSelectedLevel('');
-    setShowQuickFilters(false);
     searchInputRef.current?.focus();
-  };
-
-  const handleQuickLevelFilter = (level) => {
-    setSelectedLevel(level);
-    
-    // Immediately search when level filter changes
-    const params = new URLSearchParams();
-    if (searchTerm.trim()) params.append('q', searchTerm.trim());
-    if (level) params.append('level', level);
-    
-    const query = params.toString() ? `?${params.toString()}` : '';
-    navigate(`/search${query}`);
+    performSearch('');
   };
 
   return (
     <nav className="navbar">
       <div className="nav-container">
         <Link to="/" className="nav-logo">
-          PortalSahooh
+         Sahooh
         </Link>
         
         <div className="nav-search-section">
@@ -89,7 +69,7 @@ const Navbar = () => {
                 onKeyDown={handleSearchKeyDown}
                 className="nav-search-input"
               />
-              {(searchTerm || selectedLevel) && (
+              {searchTerm && (
                 <button
                   type="button"
                   className="clear-search-btn"
@@ -100,50 +80,7 @@ const Navbar = () => {
                 </button>
               )}
             </div>
-            
-            <button
-              type="button"
-              className={`quick-filter-btn ${showQuickFilters ? 'active' : ''}`}
-              onClick={() => setShowQuickFilters(!showQuickFilters)}
-              title="Quick filters"
-            >
-              <FiFilter />
-              {selectedLevel && <span className="filter-indicator"></span>}
-            </button>
-            
           </div>
-          
-          {showQuickFilters && (
-            <div className="quick-filters-dropdown">
-              <div className="filter-group">
-                <label>Quick Level Filter:</label>
-                <div className="level-filters">
-                  <button
-                    type="button"
-                    className={`level-filter-btn ${selectedLevel === '' ? 'active' : ''}`}
-                    onClick={() => handleQuickLevelFilter('')}
-                  >
-                    All
-                  </button>
-                  {[1, 2, 3, 4].map(level => (
-                    <button
-                      key={level}
-                      type="button"
-                      className={`level-filter-btn ${selectedLevel === level.toString() ? 'active' : ''}`}
-                      onClick={() => handleQuickLevelFilter(level.toString())}
-                    >
-                      L{level}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="advanced-search-link">
-                <Link to="/search" onClick={() => setShowQuickFilters(false)}>
-                  Advanced Search & Filters
-                </Link>
-              </div>
-            </div>
-          )}
         </div>
         
         <div className="nav-menu">

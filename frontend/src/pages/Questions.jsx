@@ -9,6 +9,7 @@ const Questions = () => {
   const [questions, setQuestions] = useState([]);
   const [allQuestions, setAllQuestions] = useState([]); // Store all questions for count calculation
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('');
@@ -24,6 +25,7 @@ const Questions = () => {
     setSearchTerm('');
     setSelectedLanguage('');
     setError(null);
+    setHasLoadedOnce(false);
   }, [level]);
 
   useEffect(() => {
@@ -51,6 +53,7 @@ const Questions = () => {
 
       const data = await apiFetch(`/questions/level/${level}${query}`);
       setQuestions(Array.isArray(data) ? data : []);
+      setHasLoadedOnce(true);
     } catch (err) {
       console.error('Error fetching questions:', err);
       setError(err.message || 'Failed to load questions');
@@ -71,7 +74,6 @@ const Questions = () => {
   };
 
   const handleSearchChange = (e) => {
-    e.preventDefault();
     const value = e.target.value;
     setSearchTerm(value);
   };
@@ -146,7 +148,7 @@ const Questions = () => {
     return descriptions[level] || 'Programming questions for your skill level.';
   };
 
-  if (loading) {
+  if (loading && !hasLoadedOnce) {
     return (
       <div className="questions-page">
         <div className="loading">
@@ -255,6 +257,13 @@ const Questions = () => {
           </button>
         </div>
       </div>
+
+      {loading && hasLoadedOnce && (
+        <div className="inline-loading" role="status" aria-live="polite">
+          <div className="spinner spinner-inline"></div>
+          <span>Updating results…</span>
+        </div>
+      )}
 
       <div className="questions-container">
         {questions.length === 0 ? (

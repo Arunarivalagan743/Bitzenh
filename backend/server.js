@@ -94,6 +94,7 @@ mongoose.connect(mongoUri, mongooseOptions)
 // Routes
 app.use('/api/questions', require('./routes/questions'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/stats', require('./routes/stats'));
 
 // Default route
 app.get('/', (req, res) => {
