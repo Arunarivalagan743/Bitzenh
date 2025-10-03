@@ -170,6 +170,34 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
     }
   };
 
+  const copyModalCodeToClipboard = async () => {
+    // Use the modal's selected language instead of selectedLanguage
+    const currentAnswer = localQuestion.answers.find(answer => answer.language === answerModalLanguage) || localQuestion.answers[0];
+    if (!currentAnswer || !currentAnswer.code) return;
+    
+    try {
+      await navigator.clipboard.writeText(currentAnswer.code);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy code: ', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = currentAnswer.code;
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+      } catch (fallbackErr) {
+        console.error('Fallback copy failed: ', fallbackErr);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   const currentAnswer = getCurrentAnswer();
 
   const availableLanguages = [
@@ -232,9 +260,23 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
 
   const deleteQuestion = async () => {
     if(!window.confirm('Delete this question permanently?')) return;
+    
+    // Prompt for delete password
+    const password = window.prompt('Enter the admin password to delete this question:');
+    if (!password) {
+      setMessage({ type: 'error', text: 'Password is required to delete questions' });
+      return;
+    }
+    
     setPending(true); setMessage(null);
     try {
-      await apiFetch(`/questions/${localQuestion._id}`, { method: 'DELETE' });
+      await apiFetch(`/questions/${localQuestion._id}`, { 
+        method: 'DELETE',
+        body: JSON.stringify({ password }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       setMessage({ type: 'success', text: 'Deleted' });
       onDeleted && onDeleted(localQuestion._id);
     } catch (err) {
@@ -750,7 +792,7 @@ const QuestionCard = ({ question, onUpdated, onDeleted }) => {
                         <h4>Code ({currentAnswer.language}):</h4>
                         <button
                           className={`copy-btn ${copySuccess ? 'copy-success' : ''}`}
-                          onClick={copyCodeToClipboard}
+                          onClick={copyModalCodeToClipboard}
                           title="Copy code to clipboard"
                         >
                           {copySuccess ? <FaCheck /> : <FaCopy />} 

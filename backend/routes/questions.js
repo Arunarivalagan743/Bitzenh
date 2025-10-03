@@ -169,9 +169,21 @@ router.post('/', async (req, res) => {
   }
 });
 
-// DELETE /api/questions/:id - Delete a question
+// DELETE /api/questions/:id - Delete a question (requires password)
 router.delete('/:id', async (req, res) => {
   try {
+    // Check for delete password in request body or headers
+    const { password } = req.body;
+    const headerPassword = req.headers['x-delete-password'];
+    const providedPassword = password || headerPassword;
+    
+    // Verify password
+    if (!providedPassword || providedPassword !== process.env.DELETE_PASSWORD) {
+      return res.status(403).json({ 
+        message: 'Access denied. Valid password required to delete questions.' 
+      });
+    }
+    
     const question = await Question.findByIdAndDelete(req.params.id);
     if (!question) {
       return res.status(404).json({ message: 'Question not found' });
