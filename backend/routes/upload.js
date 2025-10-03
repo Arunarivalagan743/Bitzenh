@@ -2,6 +2,12 @@ const express = require('express');
 const { cloudinary, upload } = require('../config/cloudinary');
 const router = express.Router();
 
+const DEFAULT_UPLOAD_FOLDER = process.env.CLOUDINARY_UPLOAD_FOLDER || 'college-portal-questions';
+const DEFAULT_TRANSFORMATIONS = [
+  { width: 800, height: 600, crop: 'limit' },
+  { quality: 'auto' }
+];
+
 // --------------------
 // Upload Image Route
 // --------------------
@@ -10,32 +16,56 @@ router.post('/', upload.single('image'), async (req, res) => {
     console.log('Upload route hit');
     console.log('File received:', req.file ? 'Yes' : 'No');
     
-    if (!req.file) {
-      console.log('No file in request');
+    if (req.file) {
+      console.log('File details:', {
+        originalname: req.file.originalname,
+        path: req.file.path,
+        filename: req.file.filename,
+        size: req.file.size
+      });
+
+      const result = {
+        success: true,
+        message: 'Image uploaded successfully',
+        imageUrl: req.file.path, // Cloudinary URL
+        publicId: req.file.filename, // Cloudinary public ID
+        originalName: req.file.originalname,
+        size: req.file.size,
+      };
+
+      console.log('Sending response:', result);
+      return res.json(result);
+    }
+
+    const base64Payload = req.body?.imageBase64 || req.body?.imageDataUrl || req.body?.image;
+    if (!base64Payload) {
+      console.log('No file or base64 payload in request');
       return res.status(400).json({
         success: false,
         message: 'No image file provided',
       });
     }
 
-    console.log('File details:', {
-      originalname: req.file.originalname,
-      path: req.file.path,
-      filename: req.file.filename,
-      size: req.file.size
-    });
-
-    const result = {
-      success: true,
-      message: 'Image uploaded successfully',
-      imageUrl: req.file.path, // Cloudinary URL
-      publicId: req.file.filename, // Cloudinary public ID
-      originalName: req.file.originalname,
-      size: req.file.size,
+    console.log('Processing base64 clipboard payload');
+    const uploadOptions = {
+      folder: req.body?.folder || DEFAULT_UPLOAD_FOLDER,
+      transformation: DEFAULT_TRANSFORMATIONS,
+      resource_type: 'image'
     };
 
-    console.log('Sending response:', result);
-    res.json(result);
+    const uploaded = await cloudinary.uploader.upload(base64Payload, uploadOptions);
+
+    const base64Result = {
+      success: true,
+      message: 'Image uploaded successfully',
+      imageUrl: uploaded.secure_url,
+      publicId: uploaded.public_id,
+      originalName: uploaded.original_filename,
+      size: uploaded.bytes,
+    };
+
+    console.log('Sending response:', base64Result);
+    res.json(base64Result);
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({

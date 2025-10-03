@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AddQuestion.css';
 import { apiFetch, apiUpload } from '../api/client';
@@ -20,6 +20,8 @@ const AddQuestion = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const dropAreaRef = useRef(null);
+  const pasteTimerRef = useRef(null);
 
   const availableLanguages = [
     'javascript', 'python', 'java', 'cpp', 'c', 'csharp', 
@@ -51,7 +53,7 @@ const AddQuestion = () => {
     }
   };
 
-  const validateAndSetFiles = (files) => {
+  const validateAndSetFiles = useCallback((files) => {
     const validFiles = [];
     const previews = [];
     
@@ -89,7 +91,84 @@ const AddQuestion = () => {
     }
     
     return validFiles.length > 0;
-  };
+  }, []);
+
+  const getImageFilesFromClipboard = useCallback((clipboardData) => {
+    const images = [];
+    if (!clipboardData) return images;
+
+    const seen = new Set();
+    const pushUnique = (file) => {
+      if (!file || !file.type || !file.type.startsWith('image/')) return;
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        images.push(file);
+      }
+    };
+
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      Array.from(clipboardData.files).forEach(pushUnique);
+    }
+
+    if (clipboardData.items && clipboardData.items.length > 0) {
+      Array.from(clipboardData.items).forEach(item => {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            pushUnique(file);
+          }
+        }
+      });
+    }
+
+    return images;
+  }, []);
+
+  const handleClipboardPaste = useCallback((event) => {
+    const files = getImageFilesFromClipboard(event.clipboardData);
+    if (files.length === 0) return;
+
+    const dropArea = dropAreaRef.current;
+    const target = event.target;
+    const isTextInput = target && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    );
+    const isInsideDropArea = dropArea && (dropArea === target || dropArea.contains(target));
+
+    // Allow normal text pasting inside inputs/textarea unless user is focused on the uploader area
+    if (!isInsideDropArea && isTextInput) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (pasteTimerRef.current) {
+      clearTimeout(pasteTimerRef.current);
+    }
+    setIsDragOver(true);
+    pasteTimerRef.current = setTimeout(() => setIsDragOver(false), 180);
+
+    validateAndSetFiles(files);
+  }, [getImageFilesFromClipboard, validateAndSetFiles]);
+
+  useEffect(() => {
+    const onPaste = (event) => handleClipboardPaste(event);
+    window.addEventListener('paste', onPaste);
+    return () => {
+      window.removeEventListener('paste', onPaste);
+    };
+  }, [handleClipboardPaste]);
+
+  useEffect(() => {
+    return () => {
+      if (pasteTimerRef.current) {
+        clearTimeout(pasteTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -308,6 +387,8 @@ const AddQuestion = () => {
             
             <div 
               className={`drag-drop-area ${isDragOver ? 'drag-over' : ''}`}
+              ref={dropAreaRef}
+              tabIndex={0}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -331,6 +412,7 @@ const AddQuestion = () => {
                     }
                   </strong>
                   <p>or click to browse files (multiple selection supported)</p>
+                  <p>or use Ctrl + V / ⌘ + V to paste images from your clipboard</p>
                   <small>Max 5MB per image • JPG, PNG, GIF supported</small>
                 </div>
               </label>

@@ -170,6 +170,16 @@
   border-style: solid;
 }
 
+.drag-drop-area:focus {
+  outline: 3px solid rgba(220, 38, 38, 0.4);
+  outline-offset: 4px;
+  border-color: #dc2626;
+}
+
+.drag-drop-area:focus-visible {
+  outline: 3px solid rgba(220, 38, 38, 0.65);
+}
+
 .drag-drop-label {
   display: block;
   cursor: pointer;

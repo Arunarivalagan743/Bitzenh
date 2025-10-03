@@ -38,8 +38,9 @@ app.use(cors({
 
 // Explicit preflight handling (optional but clear)
 app.options('*', cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '6mb';
+app.use(express.json({ limit: requestBodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: requestBodyLimit }));
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
