@@ -130,12 +130,14 @@ router.get('/level/:level', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     console.log('Received request body:', JSON.stringify(req.body, null, 2));
-    const { level, title, statement, imageUrl, imagePublicId, imageUrls, imagePublicIds, answers, tags } = req.body;
+  const { level, title, statement, imageUrl, imagePublicId, imageUrls, imagePublicIds, answers, tags } = req.body;
+  const trimmedTitle = (title || '').trim();
+  const normalizedStatement = typeof statement === 'string' ? statement.trim() : '';
     
     // Validation
-    if (!level || !title || !statement || !answers || answers.length === 0) {
+    if (!level || !trimmedTitle || !answers || answers.length === 0) {
       return res.status(400).json({ 
-        message: 'Level, title, statement, and at least one answer are required' 
+        message: 'Level, title, and at least one answer are required' 
       });
     }
     
@@ -171,8 +173,8 @@ router.post('/', async (req, res) => {
     
     const question = new Question({
       level,
-      title,
-      statement,
+      title: trimmedTitle,
+      statement: normalizedStatement || undefined,
       imageUrls: finalImageUrls,
       imagePublicIds: finalImagePublicIds,
       answers,
