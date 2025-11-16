@@ -99,7 +99,7 @@ app.use('/api/stats', require('./routes/stats'));
 
 // Default route
 app.get('/', (req, res) => {
-  res.json({ message: 'College Programming Portal API' });
+  res.json({ message: 'Programming Q&A API' });
 });
 
 // Health endpoint (DB state: 0=disconnected,1=connected,2=connecting,3=disconnecting)

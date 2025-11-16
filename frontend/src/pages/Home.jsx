@@ -61,14 +61,11 @@ const Home = ({ siteViewCount, onRefreshSiteViews }) => {
     <div className="home">
       <div className="hero-section">
         <div className="hero-content">
-          <h1>Sri Shakti EngTech College</h1>
-          <h2>Programming Questions &amp; Answers Portal</h2>
-         
-         
+          <h1>Programming Q&amp;A</h1>
+          <h2>Practice by Levels • Learn by Doing</h2>
           <p>
-            Explore programming questions.
-            This portal provides instant access to answers for a wide range of programming problems
-            organized by difficulty levels to help students learn effectively.
+            Explore programming questions and solutions. Browse by difficulty,
+            search by topic, and learn with concise, syntax‑highlighted answers.
           </p>
           <div className="level-cards">
             <div className="level-card" onClick={() => handleLevelClick(1)}>
@@ -108,11 +105,11 @@ const Home = ({ siteViewCount, onRefreshSiteViews }) => {
           </div>
           <div className="feature">
             <h3>QUICK LEARNING</h3>
-            <p>Learn effectively with question-answer format instead of structured course</p>
+            <p>Learn effectively with a focused question–answer format</p>
           </div>
           <div className="feature">
             <h3>CONTRIBUTE</h3>
-            <p>Add new programming questions and answers to help the student community</p>
+            <p>Add new questions and answers to help the community</p>
           </div>
         </div>
       </div>
