@@ -15,7 +15,8 @@ const PORT = process.env.PORT || 5000;
 const defaultAllowed = [
   'http://localhost:5173', // Vite default dev port
   'http://localhost:3000',
-  'https://sietportanz.vercel.app'
+  'https://sietportanz.vercel.app',
+  'https://bitzen-black.vercel.app'
 ];
 const envAllowed = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
