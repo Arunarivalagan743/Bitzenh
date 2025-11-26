@@ -1,0 +1,106 @@
+name: Keep Backend Alive on Render
+
+on:
+  schedule:
+    # Start once every hour; job loops internally to guarantee 5 min cadence
+    - cron: '0 * * * *'
+
+  workflow_dispatch:
+    inputs:
+      loop_count:
+        description: 'Override: how many 5-min windows to cover (defaults to 13 ≈ 65 minutes)'
+        required: false
+        default: '13'
+      interval_seconds:
+        description: 'Override: seconds between pings (defaults to 300)'
+        required: false
+        default: '300'
+
+jobs:
+  ping-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: keep-alive-render
+      cancel-in-progress: false
+
+    steps:
+      - name: ♻️ Keep Render Backend Warm
+        shell: bash
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          KEEP_ALIVE_INTERVAL_SECONDS: ${{ vars.KEEP_ALIVE_INTERVAL_SECONDS }}
+          KEEP_ALIVE_LOOP_COUNT: ${{ vars.KEEP_ALIVE_LOOP_COUNT }}
+          MANUAL_INTERVAL_SECONDS: ${{ github.event.inputs.interval_seconds }}
+          MANUAL_LOOP_COUNT: ${{ github.event.inputs.loop_count }}
+        run: |
+          set -uo pipefail
+
+          DEFAULT_URL="https://siporants.onrender.com/api/health"
+          BACKEND_URL="${BACKEND_URL:-$DEFAULT_URL}"
+
+          DEFAULT_INTERVAL=300
+          DEFAULT_LOOPS=13
+
+          # Allow repository variables or manual dispatch inputs to override defaults
+          INTERVAL_SECONDS="${KEEP_ALIVE_INTERVAL_SECONDS:-$DEFAULT_INTERVAL}"
+          LOOP_COUNT="${KEEP_ALIVE_LOOP_COUNT:-$DEFAULT_LOOPS}"
+
+          if [ -n "${MANUAL_INTERVAL_SECONDS:-}" ]; then
+            INTERVAL_SECONDS="$MANUAL_INTERVAL_SECONDS"
+          fi
+
+          if [ -n "${MANUAL_LOOP_COUNT:-}" ]; then
+            LOOP_COUNT="$MANUAL_LOOP_COUNT"
+          fi
+
+          # Basic validation to avoid runaway jobs
+          if ! [[ "$INTERVAL_SECONDS" =~ ^[0-9]+$ ]] || [ "$INTERVAL_SECONDS" -lt 60 ]; then
+            echo "Interval must be an integer >= 60 seconds"
+            exit 1
+          fi
+
+          if ! [[ "$LOOP_COUNT" =~ ^[0-9]+$ ]] || [ "$LOOP_COUNT" -lt 1 ] || [ "$LOOP_COUNT" -gt 72 ]; then
+            echo "Loop count must be between 1 and 72"
+            exit 1
+          fi
+
+          TOTAL_MINUTES=$(( (INTERVAL_SECONDS * LOOP_COUNT) / 60 ))
+          echo "Backend URL: $BACKEND_URL"
+          echo "Interval: $INTERVAL_SECONDS seconds"
+          echo "Loop count: $LOOP_COUNT (~${TOTAL_MINUTES} minutes of coverage)"
+
+          for (( iteration=1; iteration<=LOOP_COUNT; iteration++ )); do
+            echo "---- Ping window $iteration of $LOOP_COUNT at $(date -u) ----"
+
+            success=0
+
+            for attempt in 1 2 3 4 5; do
+              echo "Attempt $attempt of 5..."
+
+              if curl -fsS -m 45 --connect-timeout 45 "$BACKEND_URL"; then
+                echo "✅ Backend responded on attempt $attempt"
+                success=1
+                break
+              else
+                CURL_EXIT=$?
+                echo "⚠️ Attempt $attempt failed (exit $CURL_EXIT)"
+
+                if [ "$attempt" -lt 5 ]; then
+                  echo "Waiting 10 seconds before retry"
+                  sleep 10
+                fi
+              fi
+            done
+
+            if [ "$success" -eq 0 ]; then
+              echo "⚠️ All retries failed for this window; backend may still be cold or deploying"
+            fi
+
+            if [ "$iteration" -lt "$LOOP_COUNT" ]; then
+              echo "Sleeping $INTERVAL_SECONDS seconds before next ping"
+              sleep "$INTERVAL_SECONDS"
+            fi
+          done
+
+          echo "🏁 Completed keep-alive cycle at $(date -u)"
