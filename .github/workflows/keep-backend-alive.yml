@@ -70,6 +70,8 @@ jobs:
           echo "Interval: $INTERVAL_SECONDS seconds"
           echo "Loop count: $LOOP_COUNT (~${TOTAL_MINUTES} minutes of coverage)"
 
+          total_successes=0
+
           for (( iteration=1; iteration<=LOOP_COUNT; iteration++ )); do
             echo "---- Ping window $iteration of $LOOP_COUNT at $(date -u) ----"
 
@@ -81,6 +83,7 @@ jobs:
               if curl -fsS -m 45 --connect-timeout 45 "$BACKEND_URL"; then
                 echo "✅ Backend responded on attempt $attempt"
                 success=1
+                total_successes=$((total_successes + 1))
                 break
               else
                 CURL_EXIT=$?
@@ -104,3 +107,9 @@ jobs:
           done
 
           echo "🏁 Completed keep-alive cycle at $(date -u)"
+          echo "✅ Successful pings: $total_successes out of $LOOP_COUNT windows"
+          
+          if [ "$total_successes" -eq 0 ]; then
+            echo "❌ ERROR: All ping windows failed"
+            exit 1
+          fi
